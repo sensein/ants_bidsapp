@@ -487,14 +487,17 @@ class ANTsSegmentation:
         dict
             Dictionary containing tissue and label volumes
         """
-        # Set up directories
+        # Set up directories with BIDS-compliant structure
+        # Create sub-*/ses-* subdirectories under output_dir
         session_part = f"_ses-{bids_session}" if bids_session else ""
-        bids_subject_dir = self.output_dir / f"sub-{bids_subject}"
-        if bids_session:
-            bids_subject_dir = bids_subject_dir / f"ses-{bids_session}"
 
-        anat_dir = bids_subject_dir / "anat"
-        stats_dir = bids_subject_dir / "stats"
+        # Create subject/session directory structure
+        subject_dir = self.output_dir / f"sub-{bids_subject}"
+        if bids_session:
+            subject_dir = subject_dir / f"ses-{bids_session}"
+
+        anat_dir = subject_dir / "anat"
+        stats_dir = subject_dir / "stats"
         anat_dir.mkdir(parents=True, exist_ok=True)
         stats_dir.mkdir(parents=True, exist_ok=True)
 
@@ -528,8 +531,9 @@ class ANTsSegmentation:
 
         brain_volume = float(label_volumes_mm3.sum()) if label_volumes_mm3.size else 0.0
 
-        # Generate antslabelstats.csv
-        labelstats_file = stats_dir / "antslabelstats.csv"
+        # Generate antslabelstats.csv with subject prefix
+        seg_base = f"sub-{bids_subject}{session_part}"
+        labelstats_file = stats_dir / f"{seg_base}_antslabelstats.csv"
         label_df = pd.DataFrame({
             "Label": label_values.astype(int),
             "VolumeInVoxels": label_counts.astype(int),
@@ -554,7 +558,7 @@ class ANTsSegmentation:
             }
             brain_vol_data.update(tissue_volumes)
 
-        brainvols_file = stats_dir / "antsbrainvols.csv"
+        brainvols_file = stats_dir / f"{seg_base}_antsbrainvols.csv"
         pd.DataFrame([brain_vol_data]).to_csv(brainvols_file, index=False)
 
         # Save probability maps if available
